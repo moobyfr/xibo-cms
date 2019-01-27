@@ -33,6 +33,7 @@ use Xibo\Service\DateServiceInterface;
 use Xibo\Service\LogServiceInterface;
 use Xibo\Service\SanitizerServiceInterface;
 
+
 /**
  * Class Login
  * @package Xibo\Controller
@@ -149,11 +150,13 @@ class Login extends Base
         // Check to see if the password reminder functionality is enabled.
         $passwordReminderEnabled = $this->getConfig()->GetSetting('PASSWORD_REMINDER_ENABLED');
         $mailFrom = $this->getConfig()->GetSetting('mail_from');
+        $authCASEnabled = $this->getConfig()->GetSetting('AUTHCAS_ENABLED');
 
         // Template
         $this->getState()->template = 'login';
         $this->getState()->setData([
             'passwordReminderEnabled' => (($passwordReminderEnabled === 'On' || $passwordReminderEnabled === 'On except Admin') && $mailFrom != ''),
+            'authCASEnabled' => true,
             'version' => VERSION
         ]);
     }
