@@ -85,19 +85,20 @@ class CASAuthentication extends Middleware
             $auth = new Auth($this->app->configService->casSettings);
             $auth->login();
             */
-            /*
+            \phpCAS::setDebug('/tmp/phpCAS.log');
+           /* 
             $sso_host = $this->app->configService->casSettings['config']['server'];
             $sso_port = $this->app->configService->casSettings['config']['port'];
             $sso_uri = $this->app->configService->casSettings['config']['uri'];
+            \phpCAS::client(CAS_VERSION_2_0, $sso_host, $sso_port, $sso_uri, true, null);
             */
-            //phpCAS::setDebug('/tmp/phpCAS.log');
-            //phpCAS::client(CAS_VERSION_2_0, $sso_host, $sso_port, $sso_uri, true, null);
-            //phpCAS::client(CAS_VERSION_2_0, "cas.unistra.fr", 443, '/cas', true, null);
+            \phpCAS::client(CAS_VERSION_2_0, "cas.unistra.fr", 443, '/cas', true, null);
+            \phpCAS::setNoCasServerValidation();
 
             //LOGIN HAPPENS HERE
-            //$username = phpCAS::forceAuthentication();
-    $username = "e.blindauer";
-            //var_dump($username);
+            $username = \phpCAS::forceAuthentication();
+
+            
             try {
                 $user = $app->userFactory->getByName($username);
             } catch (NotFoundException $e) {
@@ -149,6 +150,7 @@ class CASAuthentication extends Middleware
                 $app->stop();
             }
             else {
+                                $app->redirect($app->urlFor('cas.login'));
                 /* TODO 
                 // Initiate CAS SSO
                 $auth = new Auth($this->app->configService->casSettings);
@@ -158,7 +160,7 @@ class CASAuthentication extends Middleware
         };
 
         // Define a callable to check the route requested in before.dispatch
-        $isAuthorised = function () use ($app, $redirectToLogin) {
+        $isAuthorised = function () use ($app, $redirectToLogin) { 
             /** @var \Xibo\Entity\User $user */
             $user = $app->user;
 
