@@ -59,6 +59,9 @@ class CASAuthentication extends Middleware
         } else {
             $this->app->redirect($this->app->urlFor('logout'));
         }*/
+        error_log('caslogout');
+        \phpCAS::logout();
+        error_log('caslogout ended');
     }
 
     /**
@@ -78,8 +81,9 @@ class CASAuthentication extends Middleware
         $app->excludedCsrfRoutes = CASAuthentication::casRoutes();
         $app->logoutRoute = 'cas.logout';
 
-        $app->map('/cas/login', function () {
+        $app->map('/cas/login', function () use ($app) {
             // Initiate CAS SSO
+            error_log('cas.login function');
             /*
             TODO 
             $auth = new Auth($this->app->configService->casSettings);
@@ -87,25 +91,31 @@ class CASAuthentication extends Middleware
             */
             \phpCAS::setDebug('/tmp/phpCAS.log');
            /* 
-            $sso_host = $this->app->configService->casSettings['config']['server'];
-            $sso_port = $this->app->configService->casSettings['config']['port'];
-            $sso_uri = $this->app->configService->casSettings['config']['uri'];
+            $sso_host = $app->configService->casSettings['config']['server'];
+            $sso_port = $app->configService->casSettings['config']['port'];
+            $sso_uri = $app->configService->casSettings['config']['uri'];
             \phpCAS::client(CAS_VERSION_2_0, $sso_host, $sso_port, $sso_uri, true, null);
             */
             \phpCAS::client(CAS_VERSION_2_0, "cas.unistra.fr", 443, '/cas', true, null);
             \phpCAS::setNoCasServerValidation();
 
             //LOGIN HAPPENS HERE
-            $username = \phpCAS::forceAuthentication();
-
+            \phpCAS::forceAuthentication();
+            $username = \phpCAS::getUser();
             
+            error_log('cas.login auth ok, try searching user');
             try {
+                error_log('cas.login try1');
                 $user = $app->userFactory->getByName($username);
+                error_log('cas.login try2');
             } catch (NotFoundException $e) {
+                error_log('cas.login try3');
                 // XXX Add on-fly provisioning
                 throw new AccessDeniedException("Unknown user");
             }
+            error_log('cas.login search over');
             if (isset($user) && $user->userId > 0) {
+                error_log('cas.login user found');
                 // Load User
                 $user->setChildAclDependencies($app->userGroupFactory, $app->pageFactory);
                 $user->load();
@@ -129,6 +139,7 @@ class CASAuthentication extends Middleware
                     'UserAgent' => $this->app->request()->getUserAgent()
                 ]);
             }
+            error_log('end cas.login');
         })->via('GET','POST')->setName('cas.login');;
 
         $app->get('/cas/logout', function () {
@@ -150,12 +161,8 @@ class CASAuthentication extends Middleware
                 $app->stop();
             }
             else {
-                                $app->redirect($app->urlFor('cas.login'));
-                /* TODO 
-                // Initiate CAS SSO
-                $auth = new Auth($this->app->configService->casSettings);
-                $auth->login();
-                */
+                error_log('redirec to cas.login urlFor');
+                $app->redirect($app->urlFor('cas.login'));
             }
         };
 
@@ -196,6 +203,7 @@ class CASAuthentication extends Middleware
                 else {
                     // Store the current route so we can come back to it after login
                     $app->flash('priorRoute', $app->request()->getRootUri() . $app->request()->getResourceUri());
+                    error_log('Redirecto to login no identity or expired');
 
                     $redirectToLogin();
                 }
@@ -204,9 +212,11 @@ class CASAuthentication extends Middleware
                 $app->public = true;
                 // If we are expired and come from ping/clock, then we redirect
                 if ($app->session->isExpired() && ($resource == '/login/ping' || $resource == 'clock')) {
+                    error_log('Redirecto to login public  expired or ping');
                     $redirectToLogin();
                 } else if ($resource == '/login') {
                     //Force CAS SSO
+                    error_log('Redirecto to login public but url cas');
                     $redirectToLogin();
                 }
             }
