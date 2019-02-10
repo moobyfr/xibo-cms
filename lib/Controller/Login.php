@@ -33,7 +33,6 @@ use Xibo\Service\DateServiceInterface;
 use Xibo\Service\LogServiceInterface;
 use Xibo\Service\SanitizerServiceInterface;
 
-
 /**
  * Class Login
  * @package Xibo\Controller

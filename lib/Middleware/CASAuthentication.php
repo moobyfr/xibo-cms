@@ -109,7 +109,6 @@ class CASAuthentication extends Middleware
                     'UserAgent' => $this->app->request()->getUserAgent()
                 ]);
             }
-            error_log('end cas.login');
             $app->redirect($app->urlFor('home'));
         })->via('GET','POST')->setName('cas.login');;
 
@@ -141,7 +140,6 @@ class CASAuthentication extends Middleware
                 $app->stop();
             }
             else {
-                error_log('redirec to cas.login urlFor');
                 $app->redirect($app->urlFor('cas.login'));
             }
         };
@@ -175,7 +173,6 @@ class CASAuthentication extends Middleware
                 else {
                     // Store the current route so we can come back to it after login
                     $app->flash('priorRoute', $app->request()->getRootUri() . $app->request()->getResourceUri());
-                    error_log('Redirecto to login no identity or expired');
                     $redirectToLogin();
                 }
             }
@@ -183,13 +180,10 @@ class CASAuthentication extends Middleware
                 $app->public = true;
                 // If we are expired and come from ping/clock, then we redirect
                 if ($app->session->isExpired() && ($resource == '/login/ping' || $resource == 'clock')) {
-                    error_log('Redirecto to login public  expired or ping');
                     $redirectToLogin();
                 } else if ($resource == '/login') {
-                    //Force CAS SSO
-                    error_log('Redirecto to login public but url cas');
                     // Don't redirecto to logincas we want to be able to auth as local user too.
-                    //$redirectToLogin();
+                    // if we really want it, call: $redirectToLogin();
                 }
             }
         };
