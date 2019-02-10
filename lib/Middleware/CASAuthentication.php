@@ -79,7 +79,7 @@ class CASAuthentication extends Middleware
             \phpCAS::forceAuthentication();
 
             $username = \phpCAS::getUser();
-            
+
             try {
                 $user = $app->userFactory->getByName($username);
             } catch (NotFoundException $e) {
@@ -145,7 +145,7 @@ class CASAuthentication extends Middleware
         };
 
         // Define a callable to check the route requested in before.dispatch
-        $isAuthorised = function () use ($app, $redirectToLogin) { 
+        $isAuthorised = function () use ($app, $redirectToLogin) {
             /** @var \Xibo\Entity\User $user */
             $user = $app->user;
 
