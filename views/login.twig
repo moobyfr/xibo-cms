@@ -73,9 +73,9 @@
         <form id="cas-login-form" class="form-signin text-center" action="{{ urlFor("cas.login") }}" method="post">
             <input name="priorRoute" type="hidden" value="{{ flash.priorRoute }}" />
             <input type="hidden" name="{{ csrfKey }}" value="{{ csrfToken }}" />
-            <!-- <p><a href="{{ theme.getThemeConfig("theme_url") }}"><img class="login-logo" src="{{ theme.uri("img/xibologo.png") }}"></a></p>
--->
-            <p>{% trans "Click here to log in with your Central Authentication Server" %}</p>
+            <p><img class="login-logo" src="{{ theme.uri("img/cas.png") }}"></p>
+
+            <p>{% trans "Click here to login with your Central Authentication Server" %}</p>
 
             {% if flash.cas_login_message %}
             <div class="alert alert-danger">{{ flash.cas_login_message }}</div>

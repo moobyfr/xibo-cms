@@ -3,6 +3,7 @@
  * Xibo - Digital Signage - http://www.xibo.org.uk
  * Copyright (C) 2019 Spring Signage Ltd
  * Author: Emmanuel Blindauer
+ * Based on SAMLAuthentication.php
  *
  * This file (CASAuthentication.php) is part of Xibo.
  *
@@ -47,22 +48,6 @@ class CASAuthentication extends Middleware
         );
     }
 
-    public function casLogout()
-    {/*
-    TODO: decommenter et comprendre
-        if (isset($this->app->configService->casSettings['workflow']) &&
-          isset($this->app->configService->casSettings['workflow']['slo']) &&
-              $this->app->configService->casSettings['workflow']['slo'] == true) {
-            // Initiate SAML SLO
-            $auth = new Auth($this->app->configService->casSettings);
-            $auth->logout();
-        } else {
-            $this->app->redirect($this->app->urlFor('logout'));
-        }*/
-        error_log('caslogout');
-        \phpCAS::logout();
-        error_log('caslogout ended');
-    }
 
     /**
      * Uses a Hook to check every call for authorization
@@ -82,40 +67,25 @@ class CASAuthentication extends Middleware
         $app->logoutRoute = 'cas.logout';
 
         $app->map('/cas/login', function () use ($app) {
+
             // Initiate CAS SSO
-            error_log('cas.login function');
-            /*
-            TODO 
-            $auth = new Auth($this->app->configService->casSettings);
-            $auth->login();
-            */
-            \phpCAS::setDebug('/tmp/phpCAS.log');
-           /* 
             $sso_host = $app->configService->casSettings['config']['server'];
             $sso_port = $app->configService->casSettings['config']['port'];
             $sso_uri = $app->configService->casSettings['config']['uri'];
-            \phpCAS::client(CAS_VERSION_2_0, $sso_host, $sso_port, $sso_uri, true, null);
-            */
-            \phpCAS::client(CAS_VERSION_2_0, "cas.unistra.fr", 443, '/cas', true, null);
+            \phpCAS::client(CAS_VERSION_2_0, $sso_host, intval($sso_port), $sso_uri, true, null);
             \phpCAS::setNoCasServerValidation();
 
-            //LOGIN HAPPENS HERE
+            //Login happens here
             \phpCAS::forceAuthentication();
+
             $username = \phpCAS::getUser();
             
-            error_log('cas.login auth ok, try searching user');
             try {
-                error_log('cas.login try1');
                 $user = $app->userFactory->getByName($username);
-                error_log('cas.login try2');
             } catch (NotFoundException $e) {
-                error_log('cas.login try3');
-                // XXX Add on-fly provisioning
                 throw new AccessDeniedException("Unknown user");
             }
-            error_log('cas.login search over');
             if (isset($user) && $user->userId > 0) {
-                error_log('cas.login user found');
                 // Load User
                 $user->setChildAclDependencies($app->userGroupFactory, $app->pageFactory);
                 $user->load();
@@ -140,17 +110,27 @@ class CASAuthentication extends Middleware
                 ]);
             }
             error_log('end cas.login');
+            $app->redirect($app->urlFor('home'));
         })->via('GET','POST')->setName('cas.login');;
 
-        $app->get('/cas/logout', function () {
-            $this->casLogout();
+        // Service for the logout of the user.
+        // End the CAS session and the application session
+        $app->get('/cas/logout', function () use ($app) {
+            // The order is local session to destroy, and after the cas
+            // because phpCAS::logout redirects to CAS server
+            $loginController = $app->container->get('\Xibo\Controller\Login');
+            $loginController->logout(false);
+            $sso_host = $app->configService->casSettings['config']['server'];
+            $sso_port = $app->configService->casSettings['config']['port'];
+            $sso_uri = $app->configService->casSettings['config']['uri'];
+            \phpCAS::client(CAS_VERSION_2_0, $sso_host, intval($sso_port), $sso_uri, true, null);
+            \phpCAS::logout();
+
         })->setName('cas.logout');
 
-        // TODO comprendre cette fonction
         // Create a function which we will call should the request be for a protected page
         // and the user not yet be logged in.
         $redirectToLogin = function () use ($app) {
-
             if ($app->request->isAjax()) {
                 $state = $app->state;
                 /* @var ApplicationState $state */
@@ -184,17 +164,9 @@ class CASAuthentication extends Middleware
                 if ($user->hasIdentity() && !$app->session->isExpired()) {
                     // Replace our user with a fully loaded one
                     $user = $app->userFactory->getById($user->userId);
-
-                    // Pass the page factory into the user object, so that it can check its page permissions
                     $user->setChildAclDependencies($app->userGroupFactory, $app->pageFactory);
-
-                    // Load the user
                     $user->load();
-
-                    // Configure the log service with the logged in user id
                     $app->logService->setUserId($user->userId);
-
-                    // Do they have permission?
                     $user->routeAuthentication($resource);
 
                     // We are authenticated, override with the populated user object
@@ -204,7 +176,6 @@ class CASAuthentication extends Middleware
                     // Store the current route so we can come back to it after login
                     $app->flash('priorRoute', $app->request()->getRootUri() . $app->request()->getResourceUri());
                     error_log('Redirecto to login no identity or expired');
-
                     $redirectToLogin();
                 }
             }
@@ -217,7 +188,8 @@ class CASAuthentication extends Middleware
                 } else if ($resource == '/login') {
                     //Force CAS SSO
                     error_log('Redirecto to login public but url cas');
-                    $redirectToLogin();
+                    // Don't redirecto to logincas we want to be able to auth as local user too.
+                    //$redirectToLogin();
                 }
             }
         };
